@@ -41,13 +41,4 @@ class Database_PostgreSQL extends Database {
 		throw new Exception(__METHOD__.' is not implemented');
 	}
 
-
-	/**
-	 * Extra filtering hook if needed
-	 *
-	 * @param string $sql the SQL string
-	 * @return string
-	 */
-	public function filter($sql) {}
-
 }

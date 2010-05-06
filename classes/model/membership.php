@@ -1,6 +1,6 @@
 <?php defined('SYSTEM_PATH') or die('No direct access');
 /**
- * Student ORM Model
+ * Memberships ORM Model
  *
  * Demo Model for example.php
  *
@@ -10,20 +10,11 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Model_Student extends Database_ORM {
-
-	public $has_many = array(
-		'club' => array('through' => 'membership')
-	);
-
-	public $has_one = array(
-		'car' => array()
-	);
+class Model_Membership extends Database_ORM {
 
 	public $belongs_to = array(
-		'dorm' => array()
+		'club' => array(),
+		'student' => array()
 	);
 
-	protected $_cascade_delete	= TRUE;
-	
 }

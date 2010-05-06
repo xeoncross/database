@@ -13,7 +13,7 @@
 class Model_Dorm extends Database_ORM {
 
 	public $has_many = array(
-		'students' => array()
+		'student' => array()
 	);
 
 }
