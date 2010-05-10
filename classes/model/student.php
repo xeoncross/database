@@ -13,7 +13,11 @@
 class Model_Student extends Database_ORM {
 
 	public $has_many = array(
+<<<<<<< HEAD
 		'clubs' => array('through' => 'memberships')
+=======
+		'club' => array('through' => 'membership')
+>>>>>>> development
 	);
 
 	public $has_one = array(

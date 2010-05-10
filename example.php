@@ -29,6 +29,8 @@
 
 //Define the base file system path
 define('SYSTEM_PATH', realpath(dirname(__FILE__)). '/');
+define('START_TIME', microtime(true));
+define('START_MEMORY_USAGE', memory_get_usage());
 
 // Load all classes from the classes folder
 function __autoload($class)
@@ -45,11 +47,6 @@ function dump()
 }
 
 
-
-
-
-
-
 /**
  * Database
  *
@@ -57,27 +54,15 @@ function dump()
  */
 $config = array(
 	'default' => array(
-		'type'       => 'mysql',
-		'connection' => array(
-			'dsn'        => 'mysql:host=localhost;dbname=pdorm',
-			'username'   => 'root',
-			'password'   => '',
-			'persistent' => FALSE,
-),
-		'table_prefix'		=> '',
-		'charset'			=> 'utf8',
-		'cache_results'		=> 0,
-		'cache_statements'	=> TRUE,
-		'log_queries'		=> TRUE
-)
+		'dsn'        => 'mysql:host=localhost;dbname=pdorm',
+		'username'   => 'root',
+		'password'   => '',
+		'persistent' => FALSE,
+	)
 );
 
 // Create a new database instance for the models to use
 $db = Database::instance('default', $config['default']);
-
-
-
-
 
 
 /*
@@ -138,14 +123,14 @@ $band->save();
  */
 
 // Add Sam to both clubs (both ways!)
-$sam->add('clubs', $soccer);
-$band->add('students', $sam);
+$sam->add('club', $soccer);
+$band->add('student', $sam);
 
 //Add Mary to band
-$mary->add('clubs', $band);
+$mary->add('club', $band);
 
 // Add John to soccer
-$soccer->add('students', $john);
+$soccer->add('student', $john);
 
 
 /*
@@ -189,7 +174,7 @@ unset($john, $sam, $mary, $dorm, $dorm2, $soccer, $band, $ford, $toyota);
 
 // Load all dorms
 $dorm = new Model_Dorm;
-$dorms = $dorm->fetch(NULL, TRUE);
+$dorms = $dorm->fetch();
 
 if( ! $dorms)
 {
@@ -209,7 +194,7 @@ foreach($dorms as $dorm)
 	print '<h2>'. $dorm->name. '</h2>';
 
 	// Fetch all students
-	$students = $dorm->students->fetch();
+	$students = $dorm->student();
 
 	foreach($students as $student)
 	{
@@ -223,7 +208,7 @@ foreach($dorms as $dorm)
 		print '<br />';
 
 
-		if($clubs = $student->clubs->fetch())
+		if($clubs = $student->club())
 		{
 			print '<ul>';
 			foreach($clubs as $club)
@@ -242,6 +227,19 @@ foreach($dorms as $dorm)
 	$dorm->delete();
 }
 
+unset($dorms, $dorm, $students, $student, $clubs, $club);
+
+/*
+ * Remove clubs too!
+ */
+
+$clubs = new Model_Club;
+
+foreach($clubs->fetch() as $club)
+{
+	dump('Removing '. $club->name. ': '. $club->delete());
+}
+unset($club, $clubs);
 
 
 // End

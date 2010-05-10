@@ -13,7 +13,11 @@
 class Model_Club extends Database_ORM {
 
 	public $has_many = array(
+<<<<<<< HEAD
 		'students' => array('through' => 'memberships')
+=======
+		'student' => array('through' => 'membership')
+>>>>>>> development
 	);
 
 }

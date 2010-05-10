@@ -10,67 +10,48 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Database_MySQL extends Database {
-
+class Database_MySQL extends Database
+{
+	public $type = 'mysql';
+	
 	/**
 	 * Change the connection charset
 	 *
-	 * @param $charset
+	 * @param string $charset
 	 * @return boolean
 	 */
 	public function set_charset($charset)
 	{
-		// Make sure the database is connected
-		$this->connection or $this->connect();
-
-		// Create the SQL
-		$sql = 'SET NAMES '.$this->escape($charset);
-
 		//Start the query timer
 		$start = microtime(TRUE);
 		
 		// Execute a raw SET NAMES query
-		$result = $this->connection->exec($sql);
+		$this->connection->exec('SET NAMES '.$this->quote($charset));
 
 		//Record the query, params, and time taken
-		if($this->log_queries)
-		{
-			$this->queries[] = array($sql, array(), (microtime(TRUE) - $start));
-		}
-		
-		return $result;
+		$this->queries[] = array($sql, (microtime(TRUE) - $start));
 	}
 
 
 	/**
 	 * Show all tables in database that optionally match $like
+	 * 
+	 * @param string $like the name of the table to search for
 	 */
 	public function list_tables($like = NULL)
 	{
-		// Make sure the database is connected
-		$this->connection or $this->connect();
-
-		// Start benchmark
-		$this->benchmark_start();
-
 		// Create the SQL
 		$sql = 'SHOW TABLES'. ($like ? ' LIKE ?' : '');
 
 		//$like can have wild cards like "%value%"
-		$statement = $this->query($sql, array($like));
-
-		//Record the query with the time/memory taken
-		$this->queries[] = array_merge(array('sql' => $sql), $this->benchmark_end());
-
-		if( ! $statement) {
+		if( ! $results = $this->fetch($sql, array('%'. $like. '%'), FALSE))
+		{
 			return array();
 		}
 
 		//For each result we added it to the array
 		$tables = array();
-		$results = $statement->results(FALSE);
-
-		foreach($results as $key => $table)
+		foreach($results as $table)
 		{
 			$tables[] = current($table);
 		}
@@ -85,18 +66,6 @@ class Database_MySQL extends Database {
 	public function list_columns($table, $like = NULL)
 	{
 		throw new Exception(__METHOD__.' is not supported by '.get_class($this));
-	}
-
-
-	/**
-	 * Replace the identifiers with a `tick` for MySQL
-	 *
-	 * @param string $sql the SQL string
-	 * @return string
-	 */
-	public function filter($sql)
-	{
-		return str_replace('"', '`', $sql);
 	}
 
 }
