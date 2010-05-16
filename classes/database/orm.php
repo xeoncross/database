@@ -200,8 +200,6 @@ class Database_ORM {
 	 */
 	public function delete($id = NULL)
 	{
-		//throw new Exception(__METHOD__. ' not finished');
-		
 		if ($id === NULL)
 		{
 			// Use the the primary key value
@@ -390,11 +388,11 @@ class Database_ORM {
 	/**
 	 * Returns the value of the primary key
 	 *
-	 * @return int $primary_key
+	 * @return int
 	 */
 	public function pk()
 	{
-		return $this->_object[$this->_primary_key];
+		return isset($this->_object[$this->_primary_key]) ? $this->_object[$this->_primary_key] : NULL;
 	}
 	
 
@@ -460,21 +458,33 @@ class Database_ORM {
 	 */
 	public function __call($method, array $args)
 	{
+		$count = FALSE;
+		
+		// Remove the count_ from the name
+		if(substr($method, 0, 6) === 'count_')
+		{
+			$count = TRUE;
+			$method = substr($method, 6);
+		}
+		
 		if (isset(self::$_aliases[$this->name()]['has_many'][$method]))
 		{
 			// Fetch the alias
 			$alias = self::$_aliases[$this->name()]['has_many'][$method];
 			
+			// Start the prepared statement value array
+			$values = array($this->pk());
+			
 			if ($alias['through'])
 			{
 				/*
 				SELECT `alias`.* FROM `alias` LEFT JOIN `through` on 
-				`through`.fk_id = `alias`.id
-				WHERE `through`.this_id = 46
+				`through`.fk_id = `alias`.id WHERE `through`.this_id = ?
 				*/
 				
 				// Build the select
-				$sql = 'SELECT T2.*, T1.* FROM "'. $alias['model'].'" AS T1'
+				$sql = 'SELECT '. ($count ? 'COUNT(*)' : 'T2.*, T1.*'). ' FROM "'
+					. $alias['model'].'" AS T1'
 					. ' LEFT JOIN "'.$alias['through'].'" AS T2 on T2."'
 					. $alias['model'].$this->_foreign_key_suffix.'" = T1."'
 					. $this->_primary_key. '" WHERE T2."'. $this->name()
@@ -483,18 +493,36 @@ class Database_ORM {
 			else
 			{
 				// Build the select
-				$sql = 'SELECT * FROM "'.$alias['model'].'" WHERE "'
+				$sql = 'SELECT '. ($count ? 'COUNT(*)' : '*'). ' FROM "'.$alias['model'].'" WHERE "'
 				.$this->name().$this->_foreign_key_suffix.'" = ?';
 			}
 
-			// If a limit/offset were given
+			// Add column clauses
 			if(isset($args[0]))
 			{
-				$sql .= ' LIMIT '. ( isset($args[1]) ? $args[1]. ',' : ''). $args[0];
+				$sql .= ' AND '. implode(' = ? AND ', array_keys($args[0])). ' = ?';
+				
+				// Also add the values to the params
+				foreach($args[0] as $value)
+				{
+					$values[] = $value;
+				}
 			}
 			
-			// Return the objects
-			return $this->_db->fetch($sql, array($this->pk()), 'Model_'. $alias['model']);
+			// If a limit/offset were given
+			if(isset($args[1]))
+			{
+				$sql .= ' LIMIT '. ( isset($args[2]) ? $args[2]. ',' : ''). $args[1];
+			}
+			
+			if($count)
+			{
+				return $this->_db->count($sql, $values, 'Model_'. $alias['model']);
+			}
+			else
+			{
+				return $this->_db->fetch($sql, $values, 'Model_'. $alias['model']);
+			}
 		}
 		
 		switch (count($args))
@@ -560,7 +588,7 @@ class Database_ORM {
 		}
 		
 		// Show object values
-		print dump($this->_object);
+		//print dump($this->_object);
 
 		// Bad propery name
 		throw new Exception('Missing property: '.get_class($this).'::'.$column);

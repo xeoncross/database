@@ -42,10 +42,16 @@ function dump()
 {
 	foreach(func_get_args() as $value)
 	{
+		if(is_scalar($value) OR $value === NULL)
+		{
+			print '<pre>';
+			var_dump($value);
+			print '</pre>';
+			continue;
+		}
 		print '<pre>'. print_r($value, TRUE). '</pre>';
 	}
 }
-
 
 /**
  * Database
@@ -192,7 +198,7 @@ foreach($dorms as $dorm)
 {
 	// Print dorm
 	print '<h2>'. $dorm->name. '</h2>';
-
+	
 	// Fetch all students
 	$students = $dorm->student();
 
