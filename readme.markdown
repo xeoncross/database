@@ -15,3 +15,14 @@ Included in this library are a couple example files which can be removed if not 
  - example.php
 
 Please feel free to submit any patches you develop that improve these classes.
+
+
+## ORM has_many relations
+
+The example.php file shows how to use the ORM class to create working object-database relationships quickly. However, there is one aspect of the ORM models that is not clearly shown. By using the PHP's [__call() magic method](http://www.php.net/manual/en/language.oop5.overloading.php) we are able to create an unlimited number of methods that map to the relationships of a given model.
+
+For example, lets say that we wanted all to fetch some comments for a post. We don't want all of them (because their might be 1,000s!) and we only want the published comments. Using the loaded $post we can fetch the first page of live comments using the following line.
+
+    $active_comments = $post->comment(array('published' => TRUE), 10);
+    // SELECT * FROM "comment" WHERE "post_id" = ? AND "published" = ? LIMIT 10
+
