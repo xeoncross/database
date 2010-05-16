@@ -10,14 +10,9 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Model_Dorm extends Database_ORM {
-
+class Model_Dorm extends Database_ORM
+{
 	public $has_many = array(
-<<<<<<< HEAD
-		'students' => array()
-=======
 		'student' => array()
->>>>>>> development
 	);
-
 }

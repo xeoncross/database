@@ -10,14 +10,10 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Model_Student extends Database_ORM {
-
+class Model_Student extends Database_ORM
+{
 	public $has_many = array(
-<<<<<<< HEAD
-		'clubs' => array('through' => 'memberships')
-=======
 		'club' => array('through' => 'membership')
->>>>>>> development
 	);
 
 	public $has_one = array(
@@ -29,5 +25,4 @@ class Model_Student extends Database_ORM {
 	);
 
 	protected $_cascade_delete	= TRUE;
-	
 }

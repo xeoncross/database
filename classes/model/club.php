@@ -10,14 +10,9 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Model_Club extends Database_ORM {
-
+class Model_Club extends Database_ORM
+{
 	public $has_many = array(
-<<<<<<< HEAD
-		'students' => array('through' => 'memberships')
-=======
 		'student' => array('through' => 'membership')
->>>>>>> development
 	);
-
 }

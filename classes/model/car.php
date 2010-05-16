@@ -10,10 +10,9 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-class Model_Car extends Database_ORM {
-
+class Model_Car extends Database_ORM
+{
 	public $belongs_to = array(
 		'student' => array()
 	);
-
 }

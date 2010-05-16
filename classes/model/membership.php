@@ -10,15 +10,10 @@
  * @license		http://micromvc.com/license
  ********************************** 80 Columns *********************************
  */
-<<<<<<< HEAD:classes/model/memberships.php
-class Model_Memberships extends Database_ORM {
-=======
-class Model_Membership extends Database_ORM {
->>>>>>> development:classes/model/membership.php
-
+class Model_Membership extends Database_ORM
+{
 	public $belongs_to = array(
 		'club' => array(),
 		'student' => array()
 	);
-
 }
