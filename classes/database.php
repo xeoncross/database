@@ -49,7 +49,7 @@ abstract class Database
 	public $queries = array();
 	public static $instances = array();
 
-	
+
 	/**
 	 * Get a singleton instance of the Database object loading one if
 	 * not already created.
@@ -79,7 +79,7 @@ abstract class Database
 
 
 	/**
-	 * Connect to the database on creations
+	 * Connect to the database on creation
 	 *
 	 * @param string $name of connection
 	 * @param array $config of array values
@@ -98,6 +98,50 @@ abstract class Database
 
 
 	/**
+	 * Fetch a single table row using the SQL given.
+	 *
+	 * @param string $sql query to run
+	 * @param array $params for the prepared statement
+	 * @param mixed $as_object name to return row as (FALSE for array)
+	 * @param int $cache life of result set in seconds or FALSE to disable
+	 * @return object|array
+	 */
+	public function fetch_row($sql, array $params = array(), $as_object = TRUE, $cache = FALSE)
+	{
+		// Try to get the cached results first
+		if($cache AND $results = $this->_cache($sql, $params))
+		{
+			return $results;
+		}
+
+		// Run the query
+		$result = $this->query($sql, $params);
+
+		// If we should fetch the results into an object
+		if (is_string($as_object))
+		{
+			$result = new $as_object($result->fetch(PDO::FETCH_ASSOC));
+		}
+		elseif($as_object === TRUE)
+		{
+			$result = $result->fetch(PDO::FETCH_OBJ);
+		}
+		else
+		{
+			$result = $result->fetch(PDO::FETCH_ASSOC);
+		}
+
+		// Should we cache the results?
+		if($result AND $cache)
+		{
+			cache::set($hash, $result);
+		}
+
+		return $result;
+	}
+
+
+	/**
 	 * Fetch an array of records from the database using the SQL given.
 	 *
 	 * @param string $sql query to run
@@ -109,19 +153,9 @@ abstract class Database
 	public function fetch($sql, array $params = array(), $as_object = TRUE, $cache = FALSE)
 	{
 		// Try to get the cached results first
-		if($cache)
+		if($cache AND $results = $this->_cache($sql, $params))
 		{
-			$hash = $sql;
-			foreach($params as $param)
-			{
-				$hash .= md5($param);
-			}
-			$hash = sha1($hash);
-
-			if($results = cache::get($hash, $cache))
-			{
-				return $results;
-			}
+			return $results;
 		}
 
 		// Run the query
@@ -138,7 +172,7 @@ abstract class Database
 		}
 		elseif($as_object === TRUE)
 		{
-			$results = $results->fetchAll(PDO::FETCH_CLASS, 'stdClass');
+			$results = $results->fetchAll(PDO::FETCH_OBJ);
 		}
 		else
 		{
@@ -146,7 +180,7 @@ abstract class Database
 		}
 
 		// Should we cache the results?
-		if($cache)
+		if($results AND $cache)
 		{
 			cache::set($hash, $results);
 		}
@@ -165,16 +199,16 @@ abstract class Database
 	public function query($sql, $params = array())
 	{
 		$start = microtime(TRUE);
-		
+
 		// Prepare the query
 		$statement = $this->prepare($sql);
 
 		// Add the params and execute it
 		$statement->execute($params);
-		
+
 		// Record the query and time taken
 		$this->queries[] = array($sql, (microtime(TRUE) - $start));
-		
+
 		// Return the statement object
 		return $statement;
 	}
@@ -217,7 +251,7 @@ abstract class Database
 
 		// Get the database connection and prepare the statement
 		$result = $this->connection->exec($sql);
-		
+
 		// Record the query and time taken
 		$this->queries[] = array($sql, (microtime(TRUE) - $start));
 	}
@@ -315,7 +349,7 @@ abstract class Database
 		return $statement->rowCount();
 	}
 
-	
+
 	/**
 	 * Close the connection
 	 *
@@ -328,8 +362,8 @@ abstract class Database
 
 		return TRUE;
 	}
-	
-	
+
+
 	/**
 	 * Escape a dangerous value to use in SQL.
 	 * Use prepared statements instead of this function.
@@ -348,7 +382,7 @@ abstract class Database
 		//Quote using the database-specific method
 		return $this->connection->quote($value);
 	}
-	
+
 
 	/**
 	 * Implement decorator pattern over the database connection object
@@ -364,7 +398,7 @@ abstract class Database
 		{
 			throw new Exception('PDO::'.$method. ' does not exist');
 		}
-		
+
 		switch (count($args))
 		{
 			case 0:
@@ -387,18 +421,40 @@ abstract class Database
 	}
 
 
+	/**
+	 * Search the cache for this query's result set; return if found
+	 *
+	 * @param string $sql query to run
+	 * @param array $params for the prepared statement
+	 * @return mixed
+	 */
+	protected function _cache($sql, array $params = array())
+	{
+		$hash = $sql;
+		foreach($params as $param)
+		{
+			$hash .= md5($param);
+		}
+		$hash = sha1($hash);
+		if($results = cache::get($hash, $cache))
+		{
+			return $results;
+		}
+	}
+
+
 	/*
 	 * Print out all of the queries run using <pre> tags
 	 */
 	public function print_queries()
 	{
 		if( ! $this->queries)
-			return;
-		
+		return;
+
 		foreach($this->queries as $query)
 		{
 			list($sql, $time) = $query;
-			
+
 			// Highlight the SQL
 			print '<pre>'.h($sql). "\n/* Query Time: ". round($time, 5)." */</pre>\n\n";
 		}
@@ -431,6 +487,6 @@ abstract class Database
 	 * @return boolean
 	 */
 	abstract public function set_charset($charset);
-	
+
 }
 
