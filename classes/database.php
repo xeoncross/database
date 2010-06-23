@@ -330,9 +330,10 @@ abstract class Database
 			$sql .= ' WHERE ';
 			foreach ($where as $column => $value)
 			{
+				// If using a custom where clause - just add it
 				if(is_int($column))
 				{
-					$sql .= $column;
+					$sql .= $value;
 				}
 				else
 				{
