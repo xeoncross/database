@@ -2,15 +2,15 @@
 /**
  * ORM Database
  *
- * This ORM (Object Relational Mapping) class helps to promote DRY (Don't Repeat 
+ * This ORM (Object Relational Mapping) class helps to promote DRY (Don't Repeat
  * Yourself) principles by handling common tasks for your models. Things like
- * fetching rows and CRUD (Create Replace Update Delete) functionality are 
+ * fetching rows and CRUD (Create Replace Update Delete) functionality are
  * automatically handled by this class - saving hundreds of lines of code!
- * 
- * One less known, (yet useful feature) is the emulated foreign key cascade 
- * delete. This uses the model's relationships to delete rows for non-ACID 
+ *
+ * One less known, (yet useful feature) is the emulated foreign key cascade
+ * delete. This uses the model's relationships to delete rows for non-ACID
  * databases like MySQL MyISAM.
- * 
+ *
  * This class is based on the larger http://github.com/kohana/orm
  *
  * @package		MicroMVC
@@ -42,7 +42,7 @@ class Database_ORM {
 
 	// Foreign key suffix
 	protected $_foreign_key_suffix = '_id';
-	
+
 	// Database instance name
 	protected $_db			= 'default';
 
@@ -62,7 +62,7 @@ class Database_ORM {
 		// Remove Model_ from the front of the name
 		return strtolower(substr(get_class($this), 6));
 	}
-	
+
 	/**
 	 * Prepares the model database connection and loads the object.
 	 *
@@ -72,23 +72,23 @@ class Database_ORM {
 	{
 		// Get database instance from the passed object or from the instance
 		$this->_db = ($db ? $db : Database::instance($this->_db));
-		
+
 		// Compile the aliases one time and save the relationship for subsequent object instances
 		if(empty(self::$_aliases[$this->name()]))
 		{
 			foreach ($this->belongs_to as $alias => $details)
 			{
 				self::$_aliases[$this->name()]['belongs_to'][$alias] = array_merge(
-					array('model' => $alias, 'foreign_key' => $alias.$this->_foreign_key_suffix),
-					$details
+				array('model' => $alias, 'foreign_key' => $alias.$this->_foreign_key_suffix),
+				$details
 				);
 			}
 
 			foreach ($this->has_one as $alias => $details)
 			{
 				self::$_aliases[$this->name()]['has_one'][$alias] = array_merge(
-					array('model' => $alias, 'foreign_key' => $this->name().$this->_foreign_key_suffix),
-					$details
+				array('model' => $alias, 'foreign_key' => $this->name().$this->_foreign_key_suffix),
+				$details
 				);
 			}
 
@@ -99,7 +99,7 @@ class Database_ORM {
 					'foreign_key' => $this->name().$this->_foreign_key_suffix,
 					'through' => NULL
 				);
-				
+
 				// Save the relationship
 				self::$_aliases[$this->name()]['has_many'][$alias] = array_merge($defaults, $details);
 			}
@@ -195,7 +195,7 @@ class Database_ORM {
 	 * If $_cascade_delete is TRUE then this will also destroy all related has_one and
 	 * has_many rows this object owns (emulating FOREIGN KEY () ON DELETE CASCADE).
 	 *
-	 * @param int $id the row's primary key to delete
+	 * @param int $id the row's primary key to delete (optional)
 	 * @return int
 	 */
 	public function delete($id = NULL)
@@ -210,46 +210,77 @@ class Database_ORM {
 		{
 			throw new Exception('No '. $this->name() .' ID given to delete!');
 		}
-		
+
 		// Total removed rows
 		$removed = 0;
 
 		// If we should also remove all related database rows (for this object)
 		if($this->_cascade_delete)
 		{
-			if(self::$_aliases[$this->name()]['has_one'])
-			{
-				// Remove each matching row this object "has_one" of
-				foreach(self::$_aliases[$this->name()]['has_one'] as $model => $details)
-				{
-					// Build the query
-					$sql = 'DELETE FROM "'.$details['model'].'" WHERE "'.$details['foreign_key'].'" = ? LIMIT 1';
-			
-					// Remove rows
-					$removed += $this->_db->delete($sql, array($id));
-				}
-			}
-
-			if(self::$_aliases[$this->name()]['has_many'])
-			{
-				// Remove each matching row this object "has_many" of
-				foreach(self::$_aliases[$this->name()]['has_many'] as $model => $details)
-				{
-					// Build the query
-					$sql = 'DELETE FROM "'. ($details['through'] ? $details['through'] : $details['model'])
-						.'" WHERE "'.$details['foreign_key'].'" = ?';
-					
-					// Remove where target model's foreign key is this model's primary key
-					$removed += $this->_db->delete($sql, array($id));
-				}
-			}
+			$removed = $this->delete_all_relations();
 		}
-		
+
 		$sql = 'DELETE FROM "'. $this->name(). '" WHERE "'. $this->_primary_key. '" = ?';
-		
+
 		// Last, delete this row also!
 		$removed += $this->_db->delete($sql, array($id));
-		
+
+		// Return the number of rows removed
+		return $removed;
+	}
+
+
+	/**
+	 * Delete all "has_many" and "has_one" foreign key relations for the given row $id
+	 * (or current object pk()) while keeping the given row itself.
+	 *
+	 * @param int $id the row's primary key to delete (optional)
+	 * @return int
+	 */
+	public function delete_all_relations($id = NULL)
+	{
+		if ($id === NULL)
+		{
+			// Use the the primary key value
+			$id = $this->pk();
+		}
+
+		if ( ! $id OR $id === '0')
+		{
+			throw new Exception('No '. $this->name() .' ID given to delete!');
+		}
+
+		// Total removed rows
+		$removed = 0;
+
+		// If we should also remove all related database rows (for this object)
+		if(self::$_aliases[$this->name()]['has_one'])
+		{
+			// Remove each matching row this object "has_one" of
+			foreach(self::$_aliases[$this->name()]['has_one'] as $model => $details)
+			{
+				// Build the query
+				$sql = 'DELETE FROM "'.$details['model'].'" WHERE "'.$details['foreign_key'].'" = ? LIMIT 1';
+					
+				// Remove rows
+				$removed += $this->_db->delete($sql, array($id));
+			}
+		}
+
+		if(self::$_aliases[$this->name()]['has_many'])
+		{
+			// Remove each matching row this object "has_many" of
+			foreach(self::$_aliases[$this->name()]['has_many'] as $model => $details)
+			{
+				// Build the query
+				$sql = 'DELETE FROM "'. ($details['through'] ? $details['through'] : $details['model'])
+				.'" WHERE "'.$details['foreign_key'].'" = ?';
+					
+				// Remove where target model's foreign key is this model's primary key
+				$removed += $this->_db->delete($sql, array($id));
+			}
+		}
+
 		// Return the number of rows removed
 		return $removed;
 	}
@@ -290,12 +321,12 @@ class Database_ORM {
 		{
 			throw new Exception($alias. ' alias is not found.');
 		}
-		
+
 		$details = self::$_aliases[$this->name()]['has_many'][$alias];
-		
+
 		$sql = 'SELECT COUNT(*) FROM "'. $alias['through']. '" WHERE "'
-			. $details['model'].$this->_foreign_key_suffix. '" = ? AND "'
-			. $details['foreign_key']. '" = ?';
+		. $details['model'].$this->_foreign_key_suffix. '" = ? AND "'
+		. $details['foreign_key']. '" = ?';
 			
 		return $this->_db->count($sql, array($model->pk(), $this->pk()));
 	}
@@ -314,14 +345,14 @@ class Database_ORM {
 		{
 			throw new Exception($alias. ' alias is not found.');
 		}
-		
+
 		/**
 		 * The "through" table model might have it's own methods to run before the insert.
 		 * So if specified, we should use *that model* to perform the action.
 		 */
 
 		$alias = self::$_aliases[$this->name()]['has_many'][$alias];
-		
+
 		// Load the through-relationship model
 		$through = 'Model_'. $alias['through'];
 		$through = new $through;
@@ -332,7 +363,7 @@ class Database_ORM {
 
 		// Create a new row
 		$through->save();
-		
+
 		return $this;
 	}
 
@@ -350,12 +381,12 @@ class Database_ORM {
 		{
 			throw new Exception($alias. ' alias is not found.');
 		}
-		
+
 		$alias = self::$_aliases[$this->name()]['has_many'][$alias];
-		
+
 		$sql = 'DELETE FROM "'. $alias['through']. '" WHERE "'
-			. $model->name().$this->_foreign_key_suffix. '" = ? AND "'
-			. $this->name().$this->_foreign_key_suffix. '" = ?';
+		. $model->name().$this->_foreign_key_suffix. '" = ? AND "'
+		. $this->name().$this->_foreign_key_suffix. '" = ?';
 			
 		return $this->_db->count($sql, array($model->pk(), $this->pk()));
 	}
@@ -369,8 +400,8 @@ class Database_ORM {
 	public function load()
 	{
 		if ($this->loaded)
-			return;
-		
+		return;
+
 		// Build the query
 		$sql = 'SELECT * FROM "'. $this->name(). '" WHERE "'. $this->_primary_key. '" = ?';
 
@@ -394,10 +425,10 @@ class Database_ORM {
 	{
 		return isset($this->_object[$this->_primary_key]) ? $this->_object[$this->_primary_key] : NULL;
 	}
-	
+
 
 	/**
-	 * Fetch an array of objects from the database optionally limiting by 
+	 * Fetch an array of objects from the database optionally limiting by
 	 * certain column values.
 	 *
 	 * @param array $where an array of column conditions
@@ -408,27 +439,27 @@ class Database_ORM {
 	public function fetch(array $where = NULL, $limit = NULL, $offset = NULL)
 	{
 		$sql = 'SELECT * FROM "'. $this->name(). '"';
-		
+
 		// Add column clauses
 		if($where)
 		{
 			$sql .= ' WHERE '. implode(' = ? AND ', array_keys($where)). ' = ? ';
 		}
-		
+
 		// If a limit/offset were given
 		if($limit)
 		{
 			$sql .= ' LIMIT '. ( isset($offset) ? $offset. ',' : ''). $limit;
 		}
-		
-		
+
+
 		// Return the objects
 		return $this->_db->fetch($sql, ($where ? array_values($where) : array()), get_class($this));
 	}
-	
+
 
 	/**
-	 * Count the number of objects in the database optionally limiting by 
+	 * Count the number of objects in the database optionally limiting by
 	 * certain column values.
 	 *
 	 * @param array $columns an array of column conditions
@@ -437,18 +468,18 @@ class Database_ORM {
 	public function count(array $where = NULL)
 	{
 		$sql = 'SELECT COUNT(*) FROM "'. $this->name(). '"';
-		
+
 		// Add column clauses
 		if($where)
 		{
 			$sql .= ' WHERE '. implode(' = ? AND ', array_keys($where)). ' = ? ';
 		}
-		
+
 		// Return the objects
 		return $this->_db->count($sql, ($where ? array_values($where) : array()));
 	}
-	
-	
+
+
 	/**
 	 * Handles pass-through to database methods.
 	 *
@@ -459,36 +490,36 @@ class Database_ORM {
 	public function __call($method, array $args)
 	{
 		$count = FALSE;
-		
+
 		// Remove the count_ from the name
 		if(substr($method, 0, 6) === 'count_')
 		{
 			$count = TRUE;
 			$method = substr($method, 6);
 		}
-		
+
 		if (isset(self::$_aliases[$this->name()]['has_many'][$method]))
 		{
 			// Fetch the alias
 			$alias = self::$_aliases[$this->name()]['has_many'][$method];
-			
+				
 			// Start the prepared statement value array
 			$values = array($this->pk());
-			
+				
 			if ($alias['through'])
 			{
 				/*
-				SELECT `alias`.* FROM `alias` LEFT JOIN `through` on 
-				`through`.fk_id = `alias`.id WHERE `through`.this_id = ?
-				*/
-				
+				 SELECT `alias`.* FROM `alias` LEFT JOIN `through` on
+				 `through`.fk_id = `alias`.id WHERE `through`.this_id = ?
+				 */
+
 				// Build the select
 				$sql = 'SELECT '. ($count ? 'COUNT(*)' : 'T2.*, T1.*'). ' FROM "'
-					. $alias['model'].'" AS T1'
-					. ' LEFT JOIN "'.$alias['through'].'" AS T2 on T2."'
-					. $alias['model'].$this->_foreign_key_suffix.'" = T1."'
-					. $this->_primary_key. '" WHERE T2."'. $this->name()
-					. $this->_foreign_key_suffix. '" = ?';
+				. $alias['model'].'" AS T1'
+				. ' LEFT JOIN "'.$alias['through'].'" AS T2 on T2."'
+				. $alias['model'].$this->_foreign_key_suffix.'" = T1."'
+				. $this->_primary_key. '" WHERE T2."'. $this->name()
+				. $this->_foreign_key_suffix. '" = ?';
 			}
 			else
 			{
@@ -501,20 +532,20 @@ class Database_ORM {
 			if(isset($args[0]))
 			{
 				$sql .= ' AND '. implode(' = ? AND ', array_keys($args[0])). ' = ?';
-				
+
 				// Also add the values to the params
 				foreach($args[0] as $value)
 				{
 					$values[] = $value;
 				}
 			}
-			
+				
 			// If a limit/offset were given
 			if(isset($args[1]))
 			{
 				$sql .= ' LIMIT '. ( isset($args[2]) ? $args[2]. ',' : ''). $args[1];
 			}
-			
+				
 			if($count)
 			{
 				return $this->_db->count($sql, $values, 'Model_'. $alias['model']);
@@ -524,7 +555,7 @@ class Database_ORM {
 				return $this->_db->fetch($sql, $values, 'Model_'. $alias['model']);
 			}
 		}
-		
+
 		switch (count($args))
 		{
 			case 0:
@@ -581,12 +612,12 @@ class Database_ORM {
 		{
 			// Load the related model
 			$model = $this->related($column);
-			
+				
 			// If found, return the model
 			return ($model AND $model->loaded ? $model : FALSE);
 
 		}
-		
+
 		// Show object values
 		//print dump($this->_object);
 
@@ -653,8 +684,8 @@ class Database_ORM {
 		$this->load();
 		return $this->_object;
 	}
-	
-	
+
+
 	/**
 	 * Returns the current row as an object
 	 * @return array
@@ -664,8 +695,8 @@ class Database_ORM {
 		$this->load();
 		return (object) $this->_object;
 	}
-	
-	
+
+
 	/**
 	 * Returns whether or not primary key is empty
 	 *
@@ -693,10 +724,10 @@ class Database_ORM {
 		{
 			// Get the model name
 			$model = self::$_aliases[$this->name()]['has_one'][$alias]['model'];
-			
+				
 			// Build the query
 			$sql = 'SELECT * FROM "'.$model.'" WHERE "'.$this->name().$this->_foreign_key_suffix.'" = ?';
-			
+				
 			// Fetch the results
 			if($results = $this->_db->fetch($sql, array($this->pk()), 'Model_'. $model))
 			{
@@ -706,15 +737,15 @@ class Database_ORM {
 		elseif (isset(self::$_aliases[$this->name()]['belongs_to'][$alias]))
 		{
 			$this->load();
-			
+				
 			// Get the model name
 			$model = self::$_aliases[$this->name()]['belongs_to'][$alias]['model'];
-			
+				
 			// Build the query
 			$sql = 'SELECT * FROM "'.$model.'" WHERE "'.$this->_primary_key.'" = ?';
-			
+				
 			$key = $this->_object[$model.$this->_foreign_key_suffix];
-			
+				
 			// Fetch the results
 			if($results = $this->_db->fetch($sql, array($key), 'Model_'. $model))
 			{
