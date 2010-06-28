@@ -606,7 +606,7 @@ class Database_ORM {
 			$model = $this->related($column);
 
 			// If found, return the model
-			return ($model->loaded ? $model : FALSE);
+			return ($model AND $model->loaded ? $model : FALSE);
 		}
 		elseif (isset(self::$_aliases[$this->name()]['has_one'][$column]))
 		{
@@ -729,9 +729,9 @@ class Database_ORM {
 			$sql = 'SELECT * FROM "'.$model.'" WHERE "'.$this->name().$this->_foreign_key_suffix.'" = ?';
 				
 			// Fetch the results
-			if($results = $this->_db->fetch($sql, array($this->pk()), 'Model_'. $model))
+			if($row = $this->_db->fetch_row($sql, array($this->pk()), 'Model_'. $model))
 			{
-				return $this->_related[$alias] = $results[0];
+				return $this->_related[$alias] = $row;
 			}
 		}
 		elseif (isset(self::$_aliases[$this->name()]['belongs_to'][$alias]))
@@ -747,9 +747,9 @@ class Database_ORM {
 			$key = $this->_object[$model.$this->_foreign_key_suffix];
 				
 			// Fetch the results
-			if($results = $this->_db->fetch($sql, array($key), 'Model_'. $model))
+			if($row = $this->_db->fetch_row($sql, array($key), 'Model_'. $model))
 			{
-				return $this->_related[$alias] = $results[0];
+				return $this->_related[$alias] = $row;
 			}
 		}
 	}
